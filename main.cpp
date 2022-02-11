@@ -2,6 +2,8 @@
 #include <vector>
 #include <string>
 #include <deque>
+#include <cassert>
+#include <unistd.h>
 
 #define RESET "\033[0m"
 #define BLACK "\033[30m"     /* Black */
@@ -40,6 +42,14 @@
 
 constexpr int CONS_WD = 80;
 constexpr int CONS_HT = 25;
+constexpr int N_FOOD = 10;
+constexpr int TERM = 50;
+constexpr int EXT_FOOD = 1;
+constexpr int POINT_FOOD = 100;
+
+// down, right, up, left
+constexpr int DX[] = {1, 0, -1, 0}; 
+constexpr int DY[] = {0, 1, 0, -1};
 
 typedef std::pair<int, int> CurPos;
 
@@ -68,8 +78,8 @@ void add_foods(std::vector<CurPos> &foods, int cnt)
 {
   for (int i = 0; i < cnt; i++)
   {
-    int x = rand() % (CONS_HT - 4);
-    int y = rand() % (CONS_WD - 2);
+    int x = rand() % (CONS_HT - 4) + 2;
+    int y = rand() % (CONS_WD - 2) + 1;
     foods.push_back(CurPos(x, y));
   }
 }
@@ -120,7 +130,7 @@ void print_field()
 
   // field
   set_color(YELLOW, B_BLACK);
-  for (int i = 2; i < CONS_HT - 1; i++)
+  for (int i = 2; i < CONS_HT - 2; i++)
   {
     set_cursor_pos(i, 1);
     for (int j = 1; j < CONS_WD - 1; j++)
@@ -136,7 +146,8 @@ void print_field()
   }
 }
 
-void print_score(int score, int body_length) {
+void print_score(int score, int body_length)
+{
   set_color(WHITE, B_BLACK);
   set_cursor_pos(0, 0);
   std::cout << "SCORE:";
@@ -147,9 +158,11 @@ void print_score(int score, int body_length) {
   std::cout << body_length;
 }
 
-void print_snake(const std::deque<CurPos> &snake) {
+void print_snake(const std::deque<CurPos> &snake)
+{
   set_color(BLUE, B_BLACK);
-  for (unsigned int i = 1; i < snake.size(); i++) {
+  for (unsigned int i = 1; i < snake.size(); i++)
+  {
     set_cursor_pos(snake[i].first, snake[i].second);
     std::cout << "*";
   }
@@ -159,15 +172,96 @@ void print_snake(const std::deque<CurPos> &snake) {
   std::cout << "@";
 }
 
+void update_snake(std::deque<CurPos> &snake, int x, int y, bool extend)
+{
+  snake.push_front(CurPos(x, y));
+  if (!extend)
+  {
+    set_cursor_pos(snake.back().first, snake.back().second);
+    std::cout << " ";
+    snake.pop_back();
+  }
+}
+
+bool on_field(int x, int y)
+{
+  if (x < 2 or CONS_HT - 2 <= x)
+    return false;
+  if (y < 1 or CONS_WD - 1 <= x)
+    return false;
+  return true;
+}
+
+bool collapsed(const std::deque<CurPos> &snake)
+{
+  int x = snake[0].first;
+  int y = snake[0].second;
+  if (!on_field(x, y))
+    return true;
+  for (int i = 1; i < snake.size(); i++)
+  {
+    if (snake[i].first == x and snake[i].second == y)
+      return true;
+  }
+  return false;
+}
+
+// return true if no body is there
+bool check_body(const std::deque<CurPos> &snake, int dx, int dy)
+{
+  if (snake.size() < 2)
+    return true;
+  return snake[0].first + dx != snake[1].first or snake[0].second + dy != snake[1].second;
+}
+
 int main()
 {
-  std::string s;
-  std::cin >> s;
-  std::cout << "Hello, World."
-            << " ";
-  std::cout << LIGHTBLACK << s << RESET << std::endl;
+  srand((int)time(0));
 
-  std::cout << "\033[10;50H" << 343 << std::endl;
+  for (;;)
+  {
+    int score = 0;
+    int dx = 0, dy = 1;
+    int x = CONS_HT / 2;
+    int y = CONS_WD / 2;
+    std::deque<CurPos> snake;
+    snake.push_back(CurPos(x, y - 2));
+    snake.push_back(CurPos(x, y - 1));
+    snake.push_back(CurPos(x, y));
+
+    std::vector<CurPos> foods;
+    add_foods(foods, N_FOOD);
+
+    print_field();
+    print_foods(foods);
+    print_snake(snake);
+    print_score(score, snake.size());
+    int eating = 0;
+
+    for (int cnt = 0;; cnt++)
+    {
+      char input; std::cin >> input;
+      int next_idx;
+      switch (input)
+      {
+      case 'j':
+        next_idx = 0;
+        break;
+      case 'l':
+        next_idx = 1;
+        break;
+      case 'k':
+        next_idx = 2;
+        break;
+      case 'h':
+        next_idx = 3;
+        break;
+      default:
+        assert(false);
+      }
+      sleep(2);
+    }
+  }
 
   return 0;
 }
